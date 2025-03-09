@@ -72,7 +72,7 @@ tipoPrimitivo float true decimal_32bits
 tipoPrimitivo double true decimal_64bits
 tipoPrimitivo char true caracter_16bits
 tipoPrimitivo boolean true booleano
-tipoNoprimitivo string true cadena
+tipoNoprimitivo String true cadena
 controlFlujo if true condicional
 controlFlujo else true alternativa
 controlFlujo switch true seleccion_Multiple

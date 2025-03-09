@@ -57,6 +57,12 @@ def analizar_codigo(codigo):
         ("control_flujo", r'if|else|switch|case|default|for|while|do|break|continue'),
         ("modificador_acceso", r'class|interface|enum|extends|implements|public|private|protected|static|final|abstract'),
         ("identificador", r'[a-zA-Z_][a-zA-Z0-9_]*'),
+        # Patrones para símbolos no válidos
+        ("operador_no_valido", r'\*\*|:=|=>|<=>|<>'),
+        ("caracter_especial_no_valido", r'¿|¡|¬|‰|§'),
+        ("delimitador_no_valido", r'«|»|„|›|‹'),
+        ("operador_matematico_no_valido", r'÷|×|∑|∏'),
+        ("caracter_no_reconocido", r'ñ|Ñ|æ|ø|ß|ð'),
     ]
 
     # Construir el regex combinado
@@ -72,6 +78,31 @@ def analizar_codigo(codigo):
         if tipo_token in ["whitespace", "comentario_linea", "comentario_bloque"]:
             continue
 
+        # Manejar símbolos no válidos
+        if tipo_token in ["operador_no_valido", "caracter_especial_no_valido", 
+                          "delimitador_no_valido", "operador_matematico_no_valido", 
+                          "caracter_no_reconocido"]:
+            linea = calcular_linea(codigo, start)
+            columna = calcular_columna(codigo, start)
+            tipo_error = {
+                "operador_no_valido": "Operador no válido en Java",
+                "caracter_especial_no_valido": "Carácter especial no válido en Java",
+                "delimitador_no_valido": "Delimitador no válido en Java",
+                "operador_matematico_no_valido": "Operador matemático no válido en Java",
+                "caracter_no_reconocido": "Carácter no reconocido en identificadores de Java",
+            }[tipo_token]
+            
+            resultados.append({
+                "ID": len(resultados) + 1,
+                "Lexema": lexema,
+                "Línea": linea,
+                "Columna": columna,
+                "Patrón": tipo_error,
+                "Reservada": False,
+                #"Mensaje": f"{tipo_error}: '{lexema}' no es válido en Java."
+            })
+            continue  # Saltar al siguiente token
+
         # Buscar en el diccionario
         entrada_diccionario = next((entrada for entrada in diccionario if entrada["lexema"] == lexema), None)
         linea = calcular_linea(codigo, start)
@@ -79,7 +110,7 @@ def analizar_codigo(codigo):
         
         if entrada_diccionario:
             resultados.append({
-                "ID": len(resultados) + 1,
+                "ID": entrada_diccionario["id"],
                 "Lexema": lexema,
                 "Línea": linea,
                 "Columna": columna,
@@ -94,7 +125,7 @@ def analizar_codigo(codigo):
             elif tipo_token == "literal_caracter":
                 patron = "literal_caracter"
             resultados.append({
-                "ID": len(resultados) + 1,
+                "ID": tipo_token,
                 "Lexema": lexema,
                 "Línea": linea,
                 "Columna": columna,
