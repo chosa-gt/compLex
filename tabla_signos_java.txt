@@ -17,6 +17,12 @@ operadorRelacional > false mayor_que
 operadorRelacional < false menor_que
 operadorRelacional >= false mayor_o_igual
 operadorRelacional <= false menor_o_igual
+operadorAsignacion &= false asignacion_AND_bit  
+operadorAsignacion |= false asignacion_OR_bit  
+operadorAsignacion ^= false asignacion_XOR_bit  
+operadorAsignacion <<= false asignacion_desplazamiento_izquierda  
+operadorAsignacion >>= false asignacion_desplazamiento_derecha  
+operadorAsignacion >>>= false asignacion_desplazamiento_sin_signo  
 operadorLogico && false AND
 operadorLogico ! false Not
 operadorLogico || false OR
@@ -48,6 +54,12 @@ literal ' false comillas_caracter
 literal true false booleano_verdadero
 literal false false booleano_falso
 literal null false Nulo
+literal 0b false binario  
+literal 0x false hexadecimal  
+literal 0_ false separador_numerico  
+literal _ false guion_bajo 
+literal out false salida_estandar  
+literal err false salida_error  
 comentario // false comentario_linea
 comentario /* false comentario_abierto
 comentario */ false comentario_cerrado
@@ -55,12 +67,12 @@ comentario /** false comentarioDoc_abierto
 tipoPrimitivo byte true entero_8bits
 tipoPrimitivo short true entero_16bits
 tipoPrimitivo int true entero_32bits
-tiporPrimitivo long true entero_64bits
+tipoPrimitivo long true entero_64bits
 tipoPrimitivo float true decimal_32bits
 tipoPrimitivo double true decimal_64bits
 tipoPrimitivo char true caracter_16bits
-tiporNoprimitivo string true cadena
-tiporPrimitivo boolean true booleano
+tipoPrimitivo boolean true booleano
+tipoNoprimitivo string true cadena
 controlFlujo if true condicional
 controlFlujo else true alternativa
 controlFlujo switch true seleccion_Multiple
@@ -82,6 +94,11 @@ modificadorAcceso protected true acceso_Protegido
 modificadorAcceso static true miembro_estatico
 modificadorAcceso final true inmutabilidad
 modificadorAcceso abstract true metodo_Abstracto
+modificadorAcceso transient true transitorio  
+modificadorAcceso volatile true volatil  
+modificadorAcceso synchronized true sincronizado  
+modificadorAcceso native true nativo  
+modificadorAcceso strictfp true punto_flotante_estricto  
 manejoExcepcion try true captura_Excepciones
 manejoExcepcion catch true excepcion
 manejoExcepcion finally true siempre_ejeccuta
@@ -91,7 +108,7 @@ Operadores new true instancia_objeto
 Operadores this true instancia_objeto
 Operadores super true superClase
 Operadores instanceof true verifica_Tipo
-Operadores returntrue retorna_Valor
+Operadores return true retorna_Valor
 Operadores void true No_retorna_valor
 contextual var true Infereancia_tipos
 contextual yield true retorna_bloques_switch
@@ -99,7 +116,22 @@ contextual record true clase_inmutables
 contextual sealed true restringir_herencia
 contextual non-sealend true permite_herencia
 contextual permits true clases_hijas
-
-
-
-
+modulo module true declaracion_modulo  
+modulo requires true requiere_modulo  
+modulo exports true exporta_paquete  
+modulo opens true abre_paquete  
+modulo uses true usa_servicio  
+modulo provides true provee_servicio  
+anotacion @Override true sobrescrito  
+anotacion @Deprecated true obsoleto  
+anotacion @SuppressWarnings true suprimir_advertencias  
+metodoEspecial main true metodo_principal  
+metodoEspecial println true imprimir_linea  
+metodoEspecial print true imprimir  
+metodoEspecial format true formato_cadena  
+parametro args true argumentos_main  
+parametro argv true argumentos_main_alternativo  
+parametro scanner true entrada_usuario  
+clasePredefinida Object true clase_base  
+clasePredefinida Math true operaciones_matematicas  
+clasePredefinida Array true arreglo  
