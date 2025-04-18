@@ -189,200 +189,185 @@ def analizar_codigo(codigo):
 
     return resultados
 
+# Operadores
+OPERADOR_ASIGNACION = {'+=', '-=', '*=', '/=', '%=', '=', '&=', '|=', '^=', '<<=', '>>=', '>>>='}
+OPERADOR_ARITMETICO = {'+', '-', '*', '/', '%', '++', '--'}
+OPERADOR_RELACIONAL = {'==', '!=', '>', '<', '>=', '<=', 'instanceof'}
+OPERADOR_LOGICO = {'&&', '||', '!'}
+OPERADOR_BIT = {'&', '|', '^', '~', '<<', '>>', '>>>'}
+OPERADOR_TERCIARIO = {'?', ':'}
+OPERADOR_REFERENCIA = '::'
+
+# Delimitadores
+DELIMITADORES = {'(', ')', '{', '}', '[', ']', ';', ',', '.', '...', '@'}
+
+# Palabras reservadas
+TIPOS_PRIMITIVOS = {'byte', 'short', 'int', 'long', 'float', 'double', 'char', 'boolean', 'void'}
+MODIFICADORES_ACCESO = {'public', 'private', 'protected', 'static', 'final', 'abstract'}
+CONTROL_FLUJO = {'if', 'else', 'switch', 'case', 'default', 'for', 'while', 'do', 'break', 'continue'}
+MANEJO_EXCEPCIONES = {'try', 'catch', 'finally', 'throw', 'throws'}
+ORIENTACION_OBJETOS = {'class', 'interface', 'enum', 'extends', 'implements', 'new', 'this', 'super'}
+LITERALES_ESPECIALES = {'true', 'false', 'null'}
+
+# Funciones incorporadas
+METODOS_ESENCIALES = {'main', 'println', 'print', 'format'}
+
 class AnalizadorSintactico:
     def __init__(self, tokens):
         self.tokens = tokens
         self.pos_actual = 0
         self.errores = []
-        self.niveles_ambito = 0  # Para control de bloques anidados
+        self.ambito_actual = []  # Para manejar bloques anidados
 
     def analizar(self):
         try:
             self.programa()
             if not self.esta_al_final():
-                self.error("Hay tokens inesperados al final del archivo")
+                token = self.token_actual()
+                self.error(f"Tokens inesperados al final: '{token['Lexema']}'")
+            return self.errores
         except ParseError:
-            pass
-        return self.errores
+            return self.errores
 
     def programa(self):
+        # Punto de entrada principal para analizar un programa Java
         while not self.esta_al_final():
             if self.comprobar('modificadorAcceso', 'public'):
                 self.declaracion_clase()
             else:
-                self.error("Se esperaba declaración de clase pública")
+                self.error("Se esperaba una clase pública")
                 break
 
     def declaracion_clase(self):
         self.consumir('modificadorAcceso', 'public')
-        self.consumir('modificadorAcceso', 'class')
-        self.consumir('identificador')
-        self.consumir('separador', '{')
-        self.niveles_ambito += 1
+        self.consumir('palabraReservada', 'class')
+        self.consumir('identificador')  # Nombre de la clase
         
+        # Herencia
+        if self.comprobar('palabraReservada', 'extends'):
+            self.consumir('palabraReservada', 'extends')
+            self.consumir('identificador')  # Clase padre
+            
+        # Implementación de interfaces
+        if self.comprobar('palabraReservada', 'implements'):
+            self.consumir('palabraReservada', 'implements')
+            self.lista_identificadores()  # Lista de interfaces
+            
+        self.consumir('separador', '{')
+        self.ambito_actual.append('clase')
+        
+        # Miembros de la clase
         while not self.comprobar('separador', '}'):
             if self.comprobar('modificadorAcceso'):
                 self.declaracion_metodo()
             else:
-                self.error("Se esperaba declaración de método o variable")
-                break
-        
+                self.error("Declaración inválida en ámbito de clase")
+                
         self.consumir('separador', '}')
-        self.niveles_ambito -= 1
+        self.ambito_actual.pop()
 
     def declaracion_metodo(self):
-        # Modificadores
-        while self.comprobar('modificadorAcceso'):
+    # Modificadores
+        while self.comprobar('modificadorAcceso') or self.comprobar('palabraReservada', 'static'):
             self.avanzar()
-        
-        # Tipo de retorno
-        if not self.comprobar_tipos(['Operadores', 'identificador']):
+            
+        # Tipo de retorno (incluyendo void)
+        if not self.comprobar_tipo(incluir_void=True):  # Cambio clave aquí
             self.error("Tipo de retorno inválido")
         self.avanzar()
         
         # Nombre del método
-        self.consumir('identificador')
+        if self.comprobar('metodoEspecial', 'Main'):
+            self.consumir('metodoEspecial', 'Main')
+        else:
+            self.consumir('identificador')
         
         # Parámetros
-        self.consumir('delimitador', '(')
+        self.consumir('separador', '(')
         self.lista_parametros()
-        self.consumir('delimitador', ')')
+        self.consumir('separador', ')')
         
         # Cuerpo del método
-        self.consumir('delimitador', '{')
-        self.niveles_ambito += 1
+        self.consumir('separador', '{')
+        self.ambito_actual.append('metodo')
         
-        while not self.comprobar('delimitador', '}'):
+        while not self.comprobar('separador', '}'):
             self.declaracion()
-        
-        self.consumir('delimitador', '}')
-        self.niveles_ambito -= 1
+            
+        self.consumir('separador', '}')
+        self.ambito_actual.pop()
 
     def lista_parametros(self):
-        if not self.comprobar('delimitador', ')'):
-            while True:
-                if not self.comprobar_tipos(['tipo_primitivo', 'identificador', 'metodoEspecial']):
-                    self.error("Tipo de parámetro inválido")
-                self.avanzar()
-                self.consumir('identificador')
-                if not self.comprobar('delimitador', ','):
-                    break
-                self.avanzar()
-
-    def declaracion(self):
-        if self.comprobar('palabraReservada', 'if'):
-            self.declaracion_if()
-        elif self.comprobar('palabraReservada', 'while'):
-            self.declaracion_while()
-        elif self.comprobar('palabraReservada', 'for'):
-            self.declaracion_for()
-        elif self.comprobar_tipos(['tipo_primitivo', 'identificador']):
-            self.declaracion_variable()
-        else:
-            self.expresion()
-
-    def declaracion_if(self):
-        self.consumir('palabraReservada', 'if')
-        self.consumir('delimitador', '(')
-        self.expresion()
-        self.consumir('delimitador', ')')
-        self.consumir('delimitador', '{')
-        self.niveles_ambito += 1
-        
-        while not self.comprobar('delimitador', '}'):
-            self.declaracion()
-        
-        self.consumir('delimitador', '}')
-        self.niveles_ambito -= 1
-        
-        if self.comprobar('palabraReservada', 'else'):
-            self.avanzar()
-            self.consumir('delimitador', '{')
-            self.niveles_ambito += 1
+        while not self.comprobar('separador', ')'):
+            self.consumir_tipo()
+            self.consumir('identificador')
             
-            while not self.comprobar('delimitador', '}'):
-                self.declaracion()
-            
-            self.consumir('delimitador', '}')
-            self.niveles_ambito -= 1
+            if self.comprobar('separador', ','):
+                self.consumir('separador', ',')
+            else:
+                break
 
-    def declaracion_variable(self):
-        self.avanzar()  # Tipo
-        self.consumir('identificador')
-        if self.comprobar('operador_asignacion', '='):
+    def consumir_tipo(self):
+        if self.comprobar('tipoPrimitivo') or self.comprobar('tipoReferencia'):
             self.avanzar()
-            self.expresion()
-        self.consumir('delimitador', ';')
-
-    def expresion(self):
-        self.expresion_primaria()
-        while self.comprobar('operador_asignacion'):
-            self.avanzar()
-            self.expresion_primaria()
-
-    def expresion_primaria(self):
-        if self.comprobar('literal_booleano') or self.comprobar('literal_nulo'):
-            self.avanzar()
-        elif self.comprobar('numero_entero') or self.comprobar('numero_decimal'):
-            self.avanzar()
-        elif self.comprobar('cadenaLiteral'):
-            self.avanzar()
-        elif self.comprobar('identificador'):
-            self.avanzar()
-            if self.comprobar('delimitador', '('):
-                self.lista_argumentos()
         else:
-            self.error("Expresión inválida")
+            self.error("Tipo inválido")
 
-    def lista_argumentos(self):
-        self.consumir('delimitador', '(')
-        if not self.comprobar('delimitador', ')'):
-            while True:
-                self.expresion()
-                if not self.comprobar('delimitador', ','):
-                    break
-                self.avanzar()
-        self.consumir('delimitador', ')')
+    # Métodos auxiliares esenciales
+    def comprobar_tipo(self, incluir_void=False):
+        if incluir_void:
+            return (self.comprobar('tipoPrimitivo') or 
+                    self.comprobar('tipoReferencia') or 
+                    self.comprobar('tipoRetorno', 'void'))
+        else:
+            return self.comprobar('tipoPrimitivo') or self.comprobar('tipoReferencia')
+    def lista_identificadores(self):
+        while True:
+            self.consumir('identificador')
+            if not self.comprobar('separador', ','):
+                break
+            self.consumir('separador', ',')
 
-    # Funciones de utilidad
     def consumir(self, tipo, valor=None):
-        if self.comprobar(tipo, valor):  # Método correcto
-            self.avanzar()
-        else:
-            self.error(f"Se esperaba {tipo} '{valor}'")
+        if self.esta_al_final():
+            self.error(f"Se esperaba {tipo} pero se terminó el código")
+            return
+
+        token = self.token_actual()
+        if token['ID'] != tipo:
+            self.error(f"Se esperaba {tipo} pero se encontró {token['ID']}")
+            return
+
+        if valor is not None and token['Lexema'] != valor:
+            self.error(f"Se esperaba '{valor}' pero se encontró '{token['Lexema']}'")
+            return
+
+        self.pos_actual += 1
 
     def comprobar(self, tipo, valor=None):
         if self.esta_al_final():
             return False
-        token = self.tokens[self.pos_actual]
-        if valor:
+        token = self.token_actual()
+        if valor is not None:
             return token['ID'] == tipo and token['Lexema'] == valor
         return token['ID'] == tipo
-    
-    def comprobar_tipos(self, tipos):
-        return any(self.comprobar(tipo) for tipo in tipos)
 
-    def avanzar(self):
-        if not self.esta_al_final():
-            self.pos_actual += 1
+    def token_actual(self):
+        return self.tokens[self.pos_actual] if self.pos_actual < len(self.tokens) else None
 
     def esta_al_final(self):
         return self.pos_actual >= len(self.tokens)
 
+    def avanzar(self):
+        self.pos_actual += 1
+
     def error(self, mensaje):
-        if self.pos_actual < len(self.tokens):
-            token = self.tokens[self.pos_actual]
-            linea = token['Línea']
-            columna = token['Columna']
-        else:
-            linea = self.tokens[-1]['Línea'] if self.tokens else 1
-            columna = self.tokens[-1]['Columna'] if self.tokens else 1
-        
+        token = self.token_actual() or (self.tokens[-1] if self.tokens else None)
+        linea = token['Línea'] if token else 1
+        columna = token['Columna'] if token else 1
         error_msg = f"Error sintáctico en línea {linea}, columna {columna}: {mensaje}"
         self.errores.append(error_msg)
         raise ParseError()
 
 class ParseError(Exception):
     pass
-
-# Uso del analizador

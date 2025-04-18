@@ -53,45 +53,32 @@ class AnalizadorLexicoUI(QMainWindow):
             self.tabla.setItem(row, 3, QTableWidgetItem(str(resultado["Columna"])))
             self.tabla.setItem(row, 4, QTableWidgetItem(resultado["Patrón"]))
             self.tabla.setItem(row, 5, QTableWidgetItem("Sí" if resultado["Reservada"] else "No"))
+
+                
     def procesar_codigo2(self):
-    # Obtener el código del QTextEdit
         codigo = self.texto_codigo.toPlainText()
-        
-        # Realizar análisis léxico
         tokens = analizar_codigo(codigo)
         
-        # Verificar errores léxicos
-        errores_leixcos = [t for t in tokens if t['Patrón'] == 'ERROR']
-        if errores_leixcos:
-            print("Errores léxicos encontrados:")
-            for error in errores_leixcos:
-                print(f"Línea {error['Línea']}, Columna {error['Columna']}: {error['Lexema']}")
-            return
-        
-        # Filtrar tokens innecesarios
-        tokens_filtrados = [t for t in tokens if t['Patrón'] not in [
+        # Filtrar tokens irrelevantes
+        tokens_filtrados = [t for t in tokens if t['ID'] not in [
             'whitespace', 
             'comentario_linea', 
             'comentario_bloque'
         ]]
         
-        # Realizar análisis sintáctico
         try:
             analizador = AnalizadorSintactico(tokens_filtrados)
-            errores_sintacticos = analizador.analizar()
+            errores = analizador.analizar()
             
-            # Mostrar resultados en consola
-            if not errores_sintacticos:
-                print("¡Código sintácticamente correcto!")
+            if not errores:
+                print("¡Análisis sintáctico exitoso!")
             else:
-                print("\nErrores sintácticos encontrados:")
-                for error in errores_sintacticos:
+                print("\nErrores encontrados:")
+                for error in errores:
                     print(error)
                     
         except Exception as e:
-            print(f"Error durante el análisis: {str(e)}")  
-                
-    
+            print(f"Error crítico: {str(e)}")    
         
 
 if __name__ == "__main__":
