@@ -1,18 +1,18 @@
 import sys
-from PySide6.QtGui import QColor
+from PySide6.QtGui import QColor, QPainter, QTextFormat, QFont, QFontMetrics
 from PySide6.QtWidgets import (QApplication, QTableWidget,
-                               QTableWidgetItem, QMainWindow, QWidget, QGridLayout, QTextEdit, QPushButton, QPlainTextEdit, QFileDialog, QMessageBox)
-from PySide6 import QtCore
-from PySide6 import QtGui
+                               QTableWidgetItem, QMainWindow, QWidget, QGridLayout,QHBoxLayout,QVBoxLayout, QTextEdit, QPushButton, QPlainTextEdit, QFileDialog, QMessageBox)
+from PySide6.QtCore import Qt, QRect, QSize, Slot
 
 from analizador import analizar_codigo
 from sintactico import AnalizadorSintactico
+from editor import CodeEditor
 
 class AnalizadorLexicoUI(QMainWindow):
     def __init__(self):
         super().__init__()
         self.dictio =[]
-        self.setWindowTitle("Analizador Léxico")
+        self.setWindowTitle("compLex")
         self.setGeometry(100, 100, 800, 600)
         
         # Widget central
@@ -29,9 +29,14 @@ class AnalizadorLexicoUI(QMainWindow):
         #self.central_widget.setLayout(layout)
         
         # Editor de texto
-        self.texto_codigo = QPlainTextEdit(self)
+        #self.texto_codigo = QPlainTextEdit(self)
+        #self.texto_codigo.setPlaceholderText("Escribe el código aquí...")
+        #layout.addWidget(self.texto_codigo)
+        self.texto_codigo = CodeEditor()
         self.texto_codigo.setPlaceholderText("Escribe el código aquí...")
-        layout.addWidget(self.texto_codigo) 
+        self.texto_codigo.setLineWrapMode(QPlainTextEdit.LineWrapMode.NoWrap)
+        self.texto_codigo.setStyleSheet("background-color: #f0f0f0; color: #000000;")
+        layout.addWidget(self.texto_codigo)
         
         # Botón para procesar
         self.boton_procesar = QPushButton("Procesar", self)
@@ -56,6 +61,9 @@ class AnalizadorLexicoUI(QMainWindow):
         file_menu = menu.addMenu("&File")
         file_menu.addAction("&Open", self.abrir_archivo)
         file_menu.addAction("&Save", self.guardar_archivo)
+        analizar_menu = menu.addMenu("&Analizar")
+        analizar_menu.addAction("&Lexico", self.procesar_codigo)
+        analizar_menu.addAction("&Sintactico", self.procesar_codigo2)
 
         
 
