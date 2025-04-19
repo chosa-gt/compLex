@@ -58,7 +58,7 @@ literalBinario 0b false binario
 literalHexa 0x false hexadecimal
 literalSeparador 0_ false separador_numerico
 guionBajo _ false guion_bajo
-salidaEstandar out false salida
+
 salidaError err false error
 comentarioLinea // false comentario_linea
 comentarioBloque /* false comentario_bloque_abierto
@@ -126,8 +126,8 @@ anotacion @Override true Override
 anotacion @Deprecated true Deprecated
 anotacion @SuppressWarnings true SuppressWarnings
 metodoEspecial main true main
-metodoSalida println true println
-metodoSalida print true print
+
+
 metodoFormato format true format
 parametro args true args
 clasePredefinida Object true Object

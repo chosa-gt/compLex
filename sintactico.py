@@ -1,25 +1,3 @@
-# Operadores
-OPERADOR_ASIGNACION = {'+=', '-=', '*=', '/=', '%=', '=', '&=', '|=', '^=', '<<=', '>>=', '>>>='}
-OPERADOR_ARITMETICO = {'+', '-', '*', '/', '%', '++', '--'}
-OPERADOR_RELACIONAL = {'==', '!=', '>', '<', '>=', '<=', 'instanceof'}
-OPERADOR_LOGICO = {'&&', '||', '!'}
-OPERADOR_BIT = {'&', '|', '^', '~', '<<', '>>', '>>>'}
-OPERADOR_TERCIARIO = {'?', ':'}
-OPERADOR_REFERENCIA = '::'
-
-# Delimitadores
-DELIMITADORES = {'(', ')', '{', '}', '[', ']', ';', ',', '.', '...', '@'}
-
-# Palabras reservadas
-TIPOS_PRIMITIVOS = {'byte', 'short', 'int', 'long', 'float', 'double', 'char', 'boolean', 'void'}
-MODIFICADORES_ACCESO = {'public', 'private', 'protected', 'static', 'final', 'abstract'}
-CONTROL_FLUJO = {'if', 'else', 'switch', 'case', 'default', 'for', 'while', 'do', 'break', 'continue', 'return', 'try', 'catch', 'finally', 'throw', 'throws'}
-ORIENTACION_OBJETOS = {'class', 'interface', 'enum', 'extends', 'implements', 'new', 'this', 'super'}
-LITERALES_ESPECIALES = {'true', 'false', 'null'}
-
-# Funciones incorporadas
-METODOS_ESENCIALES = {'main', 'println', 'print', 'format'}
-
 class ParseError(Exception):
     pass
 
@@ -66,7 +44,7 @@ class AnalizadorSintactico:
         self.consumir('separador', '{')
         self.ambito_actual.append('clase')
         while not self.comprobar('separador', '}'):
-            if self.comprobar('modificadorAcceso'):
+            if self.comprobar('modificadorAcceso') or self.comprobar('palabraReservada', 'static'):
                 self.declaracion_metodo()
             else:
                 self.error("Declaración inválida en ámbito de clase")
@@ -99,6 +77,9 @@ class AnalizadorSintactico:
 
     def lista_parametros(self):
         # Analiza parámetros separados por comas
+        if self.comprobar('separador', ')'):
+            return  # Lista vacía de parámetros
+            
         while not self.comprobar('separador', ')'):
             self.consumir_tipo()
             while self.comprobar('separador', '['):
@@ -110,6 +91,8 @@ class AnalizadorSintactico:
             self.avanzar()
             if self.comprobar('separador', ','):
                 self.consumir('separador', ',')
+            elif not self.comprobar('separador', ')'):
+                self.error("Se esperaba ',' o ')' después del parámetro")
 
     def lista_identificadores(self):
         while True:
@@ -142,13 +125,44 @@ class AnalizadorSintactico:
             self.sentencia_while()
         elif self.comprobar('palabraReservada', 'return'):
             self.sentencia_return()
+        elif self.comprobar('tipoPrimitivo') or self.comprobar('tipoReferencia'):
+            # Declaración de variable
+            self.declaracion_variable()
+        elif self.comprobar('separador', '{'):
+            # Bloque de código
+            self.parse_bloque()
         else:
             self.sentencia_expresion()
+
+    def declaracion_variable(self):
+        # Tipo de la variable
+        self.consumir_tipo()
+        
+        # Nombre de la variable
+        self.consumir('identificador')
+        
+        # Inicialización opcional
+        if self.comprobar('operadorAsignacion', '='):
+            self.consumir('operadorAsignacion', '=')
+            self.expresion()
+        
+        # Posibles declaraciones múltiples
+        while self.comprobar('separador', ','):
+            self.consumir('separador', ',')
+            self.consumir('identificador')
+            if self.comprobar('operadorAsignacion', '='):
+                self.consumir('operadorAsignacion', '=')
+                self.expresion()
+        
+        self.consumir('separador', ';')
 
     def parse_bloque(self):
         self.consumir('separador', '{')
         self.ambito_actual.append('bloque')
         while not self.comprobar('separador', '}'):
+            if self.esta_al_final():
+                self.error("Bloque no cerrado correctamente, se esperaba '}'")
+                break
             self.declaracion()
         self.consumir('separador', '}')
         self.ambito_actual.pop()
@@ -157,7 +171,7 @@ class AnalizadorSintactico:
     def sentencia_if(self):
         self.consumir('palabraReservada', 'if')
         self.consumir('separador', '(')
-        self.sentencia_expresion(inner=True)
+        self.expresion()
         self.consumir('separador', ')')
         self.declaracion()  # cuerpo if
         if self.comprobar('palabraReservada', 'else'):
@@ -167,18 +181,33 @@ class AnalizadorSintactico:
     def sentencia_for(self):
         self.consumir('palabraReservada', 'for')
         self.consumir('separador', '(')
-        self.sentencia_expresion(inner=True)
+        
+        # Inicialización
+        if not self.comprobar('separador', ';'):
+            if self.comprobar_tipo():
+                self.declaracion_variable()
+            else:
+                self.sentencia_expresion(inner=True)
+                self.consumir('separador', ';')
+        else:
+            self.consumir('separador', ';')
+        
+        # Condición
+        if not self.comprobar('separador', ';'):
+            self.expresion()
         self.consumir('separador', ';')
-        self.sentencia_expresion(inner=True)
-        self.consumir('separador', ';')
-        self.sentencia_expresion(inner=True)
+        
+        # Incremento
+        if not self.comprobar('separador', ')'):
+            self.expresion()
         self.consumir('separador', ')')
+        
         self.declaracion()
 
     def sentencia_while(self):
         self.consumir('palabraReservada', 'while')
         self.consumir('separador', '(')
-        self.sentencia_expresion(inner=True)
+        self.expresion()
         self.consumir('separador', ')')
         self.declaracion()
 
@@ -186,16 +215,140 @@ class AnalizadorSintactico:
         self.consumir('palabraReservada', 'return')
         # expresión opcional
         if not self.comprobar('separador', ';'):
-            self.sentencia_expresion(inner=True)
+            self.expresion()
         self.consumir('separador', ';')
 
     def sentencia_expresion(self, inner=False):
-        # Consume tokens hasta ; o ) si inner=True
-        terminador = ')' if inner else ';'
-        while not self.comprobar('separador', terminador) and not self.esta_al_final():
-            self.avanzar()
+        # Ahora realmente evaluamos la expresión
+        self.expresion()
         if not inner:
             self.consumir('separador', ';')
+
+    def expresion(self):
+        """
+        Analiza una expresión completa.
+        Este método es una implementación simplificada que maneja expresiones básicas.
+        """
+        self.termino_primario()
+        
+        # Continuar mientras haya operadores o acceso a propiedades
+        while (self.comprobar('operadorAritmetico') or 
+               self.comprobar('operadorRelacional') or
+               self.comprobar('operadorLogico') or
+               self.comprobar('operadorAsignacion') or
+               self.comprobar('operadorBit') or
+               self.comprobar('separador', '.') or 
+               self.comprobar('separador', '[') or
+               self.comprobar('separador', '(')):
+               
+            if self.comprobar('separador', '.'):
+                # Llamada a método o acceso a propiedad
+                self.consumir('separador', '.')
+                self.consumir('identificador')
+                
+                # Llamada a método
+                if self.comprobar('separador', '('):
+                    self.consumir('separador', '(')
+                    self.argumentos_llamada()
+                    self.consumir('separador', ')')
+                    
+            elif self.comprobar('separador', '['):
+                # Acceso a array
+                self.consumir('separador', '[')
+                self.expresion()
+                self.consumir('separador', ']')
+                
+            elif self.comprobar('separador', '('):
+                # Llamada a método
+                self.consumir('separador', '(')
+                self.argumentos_llamada()
+                self.consumir('separador', ')')
+                
+            else:
+                # Operador binario (aritmetico, relacional, lógico, bit, asignación)
+                if self.comprobar('operadorAritmetico'):
+                    self.consumir('operadorAritmetico')
+                elif self.comprobar('operadorRelacional'):
+                    self.consumir('operadorRelacional')
+                elif self.comprobar('operadorLogico'):
+                    self.consumir('operadorLogico')
+                elif self.comprobar('operadorAsignacion'):
+                    self.consumir('operadorAsignacion')
+                elif self.comprobar('operadorBit'):
+                    self.consumir('operadorBit')
+                
+                self.termino_primario()
+
+    def termino_primario(self):
+        """
+        Analiza un término primario (identificador, literal, o expresión parentizada)
+        """
+        if self.comprobar('identificador'):
+            self.consumir('identificador')
+            
+            # Verificar llamada a método después de identificador
+            if self.comprobar('separador', '('):
+                self.consumir('separador', '(')
+                self.argumentos_llamada()
+                self.consumir('separador', ')')
+                
+        elif self.comprobar('literal'):
+            self.consumir('literal')
+        elif self.comprobar('cadenaLiteral'):
+            self.consumir('cadenaLiteral')
+        elif self.comprobar('tipoPrimitivo'):
+            self.consumir('tipoPrimitivo')
+        elif self.comprobar('literalEspecial'):
+            self.consumir('literalEspecial')
+        elif self.comprobar('numero_entero'):
+            self.consumir('numero_entero')
+        elif self.comprobar('operadorAritmetico', '+') or self.comprobar('operadorAritmetico', '-') or self.comprobar('operadorLogico', '!'):
+            # Operador unario
+            if self.comprobar('operadorAritmetico'):
+                self.consumir('operadorAritmetico')
+            else:
+                self.consumir('operadorLogico')
+            self.termino_primario()
+        elif self.comprobar('separador', '('):
+            # Expresión parentizada
+            self.consumir('separador', '(')
+            self.expresion()
+            self.consumir('separador', ')')
+        elif self.comprobar('palabraReservada', 'new'):
+            # Instanciación de objeto
+            self.consumir('palabraReservada', 'new')
+            self.consumir_tipo()
+            
+            # Array o instancia normal
+            if self.comprobar('separador', '['):
+                self.consumir('separador', '[')
+                self.expresion()
+                self.consumir('separador', ']')
+                # Más dimensiones posibles
+                while self.comprobar('separador', '['):
+                    self.consumir('separador', '[')
+                    if not self.comprobar('separador', ']'):
+                        self.expresion()
+                    self.consumir('separador', ']')
+            else:
+                # Constructor
+                self.consumir('separador', '(')
+                self.argumentos_llamada()
+                self.consumir('separador', ')')
+        else:
+            self.error("Expresión inválida")
+
+    def argumentos_llamada(self):
+        """
+        Analiza los argumentos de una llamada a método
+        """
+        if self.comprobar('separador', ')'):
+            return  # Sin argumentos
+            
+        self.expresion()
+        while self.comprobar('separador', ','):
+            self.consumir('separador', ',')
+            self.expresion()
 
     # --- Métodos auxiliares ---
     def consumir(self, tipo, valor=None):
@@ -232,5 +385,3 @@ class AnalizadorSintactico:
         msg = f"Error sintáctico en línea {linea}, columna {columna}: {mensaje}"
         self.errores.append(msg)
         raise ParseError()
-
-
