@@ -2,7 +2,8 @@ import sys
 from PySide6.QtGui import QColor
 from PySide6.QtWidgets import (QApplication, QTableWidget,
                                QTableWidgetItem, QMainWindow, QLineEdit, QWidget, QVBoxLayout, QTextEdit, QPushButton,QMessageBox)
-from analizador import analizar_codigo,AnalizadorSintactico
+from analizador import analizar_codigo
+from sintactico import AnalizadorSintactico
 
 class AnalizadorLexicoUI(QMainWindow):
     def __init__(self):

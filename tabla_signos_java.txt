@@ -125,7 +125,6 @@ moduloProvides provides true provides
 anotacion @Override true Override
 anotacion @Deprecated true Deprecated
 anotacion @SuppressWarnings true SuppressWarnings
-metodoEspecial Main true main
 metodoEspecial main true main
 metodoSalida println true println
 metodoSalida print true print
