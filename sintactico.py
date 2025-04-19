@@ -283,14 +283,24 @@ class AnalizadorSintactico:
         """
         Analiza un término primario (identificador, literal, o expresión parentizada)
         """
-        if self.comprobar('identificador'):
-            self.consumir('identificador')
+        # Manejar clases predefinidas (Math) o identificadores normales
+        if self.comprobar('clasePredefinida') or self.comprobar('identificador'):
+            # Consumir el token (clasePredefinida o identificador)
+            token_tipo = 'clasePredefinida' if self.comprobar('clasePredefinida') else 'identificador'
+            self.consumir(token_tipo)
             
-            # Verificar llamada a método después de identificador
-            if self.comprobar('separador', '('):
-                self.consumir('separador', '(')
-                self.argumentos_llamada()
-                self.consumir('separador', ')')
+            # Procesar acceso a métodos/propiedades: .sqrt()
+            while self.comprobar('separador', '.'):
+                self.consumir('separador', '.')
+                if self.comprobar('identificador'):
+                    self.consumir('identificador')
+                    # Llamada a método: .sqrt(64)
+                    if self.comprobar('separador', '('):
+                        self.consumir('separador', '(')
+                        self.argumentos_llamada()
+                        self.consumir('separador', ')')
+                else:
+                    self.error("Se esperaba un identificador después de '.'")
                 
         elif self.comprobar('literal'):
             self.consumir('literal')
