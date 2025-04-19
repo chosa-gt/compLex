@@ -312,6 +312,8 @@ class AnalizadorSintactico:
             self.consumir('literalEspecial')
         elif self.comprobar('numero_entero'):
             self.consumir('numero_entero')
+        elif self.comprobar('literalBooleano'):  # <--- Caso añadido
+            self.consumir('literalBooleano')
         elif self.comprobar('operadorAritmetico', '+') or self.comprobar('operadorAritmetico', '-') or self.comprobar('operadorLogico', '!'):
             # Operador unario
             if self.comprobar('operadorAritmetico'):
