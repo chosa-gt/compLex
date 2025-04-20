@@ -219,8 +219,23 @@ class AnalizadorSintactico:
         self.consumir('separador', ';')
 
     def sentencia_expresion(self, inner=False):
-        # Ahora realmente evaluamos la expresión
-        self.expresion()
+        pos_inicial = self.pos_actual
+        
+        # Intentar parsear la expresión
+        try:
+            self.expresion()
+        except ParseError:
+            pass
+        
+        # Calcular tokens consumidos
+        tokens_consumidos = self.pos_actual - pos_inicial
+        
+        # Verificar si es una sentencia vacía (ej: "hola;" sin operaciones)
+        if tokens_consumidos == 1:
+            token_inicial = self.tokens[pos_inicial]
+            if token_inicial["ID"] in ["identificador", "numero_entero"]:
+                self.error("Sentencia inválida: expresión sin efecto")
+        
         if not inner:
             self.consumir('separador', ';')
 
@@ -278,6 +293,7 @@ class AnalizadorSintactico:
                     self.consumir('operadorBit')
                 
                 self.termino_primario()
+    
 
     def termino_primario(self):
         """
@@ -302,8 +318,14 @@ class AnalizadorSintactico:
                 else:
                     self.error("Se esperaba un identificador después de '.'")
                 
-        elif self.comprobar('literal'):
-            self.consumir('literal')
+            if (self.comprobar('operadorAritmetico', '++') or 
+                self.comprobar('operadorAritmetico', '--')):
+                op = self.token_actual()['Lexema']
+                self.consumir('operadorAritmetico', op)
+            return
+                
+        elif self.comprobar('tipoReferencia'):
+            self.consumir('tipoReferencia')
         elif self.comprobar('cadenaLiteral'):
             self.consumir('cadenaLiteral')
         elif self.comprobar('tipoPrimitivo'):
@@ -312,7 +334,7 @@ class AnalizadorSintactico:
             self.consumir('literalEspecial')
         elif self.comprobar('numero_entero'):
             self.consumir('numero_entero')
-        elif self.comprobar('literalBooleano'):  # <--- Caso añadido
+        elif self.comprobar('literalBooleano'):  
             self.consumir('literalBooleano')
         elif self.comprobar('operadorAritmetico', '+') or self.comprobar('operadorAritmetico', '-') or self.comprobar('operadorLogico', '!'):
             # Operador unario

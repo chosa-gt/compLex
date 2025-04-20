@@ -1,5 +1,8 @@
 id lexema palabrarReservada Nombre
+operadorAritmetico ++ false aumento
+operadorAritmetico -- false decremento
 operadorAritmetico + false suma
+
 operadorAritmetico - false resta
 operadorAritmetico * false multiplicacion
 operadorAritmetico / false division
