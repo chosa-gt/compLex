@@ -1,9 +1,9 @@
 import sys
-from PySide6.QtGui import QColor, QPainter, QTextFormat, QFont, QFontMetrics, QTextDocument, QTextCursor, QPageSize
+from PySide6.QtGui import QColor, QPainter, QTextFormat, QFont, QFontMetrics, QTextDocument, QTextCursor, QPageSize, QTextCharFormat, QTextFrameFormat, QTextTableFormat, QTextBlockFormat
 from PySide6.QtPrintSupport import QPrinter
 from PySide6.QtWidgets import (QApplication, QTableWidget,
                                QTableWidgetItem, QMainWindow, QWidget, QGridLayout, QPlainTextEdit, QFileDialog, QMessageBox, QSplitter, QTabWidget)
-from PySide6.QtCore import Qt, QRect, QSize, Slot
+from PySide6.QtCore import Qt, QRect, QSize, Slot, QDateTime
 
 from analizador import analizar_codigo
 from sintactico import AnalizadorSintactico
@@ -174,21 +174,144 @@ class AnalizadorLexicoUI(QMainWindow):
             font.setPointSize(10)
             document.setDefaultFont(font)
             
-            # Agregar título (opcional)
-            title_format = cursor.charFormat()
-            title_format.setFontPointSize(14)
+            # --- Estilos predefinidos ---
+            # Estilo para título principal
+            title_format = QTextCharFormat()
+            title_format.setFontPointSize(16)
             title_format.setFontWeight(QFont.Weight.Bold)
+            title_format.setVerticalAlignment(QTextCharFormat.AlignMiddle)
+            
+            # Estilo para encabezados de sección
+            section_format = QTextCharFormat()
+            section_format.setFontPointSize(12)
+            section_format.setFontWeight(QFont.Weight.Bold)
+            section_format.setForeground(QColor(0, 0, 139))  # Azul oscuro
+            section_format.setUnderlineStyle(QTextCharFormat.SingleUnderline)
+            
+            # Estilo para código
+            code_format = QTextCharFormat()
+            code_format.setFontFamily("Courier New")
+            code_format.setFontPointSize(10)
+            
+            # Fondo para bloque de código
+            code_block_format = QTextBlockFormat()
+            code_block_format.setBackground(QColor(240, 240, 240))
+            code_block_format.setTopMargin(10)
+            code_block_format.setBottomMargin(10)
+            code_block_format.setLeftMargin(10)
+            code_block_format.setRightMargin(10)
+            
+            # Estilo para tabla
+            table_format = QTextCharFormat()
+            table_format.setFontPointSize(9)
+            
+            # Estilo para logs de error
+            error_format = QTextCharFormat()
+            error_format.setFontPointSize(9)
+            error_format.setFontItalic(True)
+            error_format.setForeground(QColor(139, 0, 0))  # Rojo oscuro
+
+            
+            # --- Contenido del PDF ---
+            # Título del documento
             cursor.setCharFormat(title_format)
-            cursor.insertText("Informe Exportado\n\n")
+            cursor.insertText("Informe Completo\n")
             
-            # Restaurar formato normal para el contenido
-            normal_format = cursor.charFormat()
+            # Fecha
+            normal_format = QTextCharFormat()
             normal_format.setFontPointSize(10)
-            normal_format.setFontWeight(QFont.Weight.Normal)
             cursor.setCharFormat(normal_format)
+            cursor.insertText(f"Generado el: {QDateTime.currentDateTime().toString('dd/MM/yyyy HH:mm')}\n\n")
             
-            # Insertar el contenido del QPlainTextEdit
-            cursor.insertText(self.terminal.toPlainText())
+            # Sección 1: Código fuente
+            cursor.setCharFormat(section_format)
+            cursor.insertText("CÓDIGO FUENTE\n")
+            
+            # Bloque de código con fondo
+            cursor.insertBlock(code_block_format)
+            cursor.setCharFormat(code_format)
+            cursor.insertText(self.texto_codigo.toPlainText())
+            cursor.insertBlock()  # Nueva línea sin fondo
+            
+            # Espacio entre secciones
+            cursor.setCharFormat(normal_format)
+            cursor.insertText("\n\n")
+            
+            # Sección 2: Datos tabulares
+            cursor.insertText("DATOS TABULARES\n", section_format)
+            cursor.insertText("\n")
+
+            # Crear tabla en el PDF
+            table = cursor.insertTable(
+                self.tabla.rowCount() + 1,  # +1 para encabezados
+                self.tabla.columnCount(),
+                QTextTableFormat()
+            )
+            
+            # Formato de la tabla
+            table_format = table.format()
+            table_format.setHeaderRowCount(1)
+            table_format.setBorder(1)
+            table_format.setBorderStyle(QTextFrameFormat.BorderStyle_Solid)
+            table_format.setCellSpacing(2)
+            table_format.setCellPadding(5)
+            table_format.setAlignment(Qt.AlignmentFlag.AlignLeft)
+            table.setFormat(table_format)
+            
+            # Crear formato para encabezados
+            header_format = QTextCharFormat()
+            header_format.setFontWeight(QFont.Weight.Bold)
+            header_format.setBackground(QColor(220, 220, 220))
+            header_format.setFontPointSize(10)
+            
+            # Crear formato para datos
+            data_format = QTextCharFormat()
+            data_format.setFontPointSize(9)
+            
+            # Llenar encabezados de tabla
+            for col in range(self.tabla.columnCount()):
+                header_item = self.tabla.horizontalHeaderItem(col)
+                if header_item:  # Verificar si el encabezado existe
+                    cell = table.cellAt(0, col)
+                    cell_cursor = cell.firstCursorPosition()
+                    cell_cursor.setCharFormat(header_format)
+                    cell_cursor.insertText(header_item.text())
+            
+            # Llenar datos de la tabla
+            for row in range(self.tabla.rowCount()):
+                for col in range(self.tabla.columnCount()):
+                    cell = table.cellAt(row + 1, col)  # +1 por la fila de encabezado
+                    cell_cursor = cell.firstCursorPosition()
+                    cell_cursor.setCharFormat(data_format)
+            
+                    item = self.tabla.item(row, col)
+                    if item and item.text():  # Verificar si el item existe y tiene texto
+                        cell_cursor.insertText(item.text())
+                    else:
+                        cell_cursor.insertText("-")  # Marcador para celdas vacías
+            
+            cursor.movePosition(QTextCursor.MoveOperation.End)
+            cursor.insertText("\n\n")
+            
+            # Sección 3: Logs de error
+            cursor.insertText("REGISTRO DE ERRORES\n", section_format)
+            cursor.insertText("\n")
+            
+            # Insertar logs con formato especial
+            cursor.insertBlock(code_block_format)
+            cursor.setCharFormat(error_format)
+            cursor.insertText(self.error_log.get_log_text())
+            cursor.insertText("\n\n")
+            #error_block.mergeCharFormat(error_format)
+
+            #Este es el bloque de código que se encarga de insertar la tabla de resultados y el log de errores en el PDF
+            #table1 = self.tabla
+            #cursor.insertText("Tabla de Resultados\n\n")
+            #for row in range(table1.rowCount()):
+            #    for col in range(table1.columnCount()):
+            #        cursor.insertText(table1.item(row, col).text() + "\t")
+            #    cursor.insertText("\n")
+            #cursor.insertText(ErrorLogTerminal.get_log_text(self.error_log) + "\n\n")
             
             # Configurar la impresora (PDF)
             printer = QPrinter(QPrinter.PrinterMode.HighResolution)

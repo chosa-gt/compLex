@@ -71,6 +71,9 @@ class ErrorLogTerminal(QWidget):
         """Limpia el contenido del log (para uso interno del programa si es necesario)."""
         self.log_output.clear()
 
+    def get_log_text(self):
+        """Devuelve el texto completo del log (para uso externo si es necesario)."""
+        return self.log_output.toPlainText()
     # Puedes añadir más métodos si necesitas, por ejemplo, para guardar el log a un archivo.
     # def save_log_to_file(self, filename):
     #    with open(filename, 'w', encoding='utf-8') as f:
