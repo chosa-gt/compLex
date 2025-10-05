@@ -104,24 +104,59 @@ class AnalizadorLexicoUI(QMainWindow):
 
     def procesar_codigo(self):
         codigo = self.texto_codigo.toPlainText()
-        tokens = analizar_codigo(codigo)
-        self.dictio=[tokens]
-        self.actualizar_tabla(tokens)
+        tokens = analizar_codigo(codigo) # Esta función ahora devuelve tokens con el nuevo formato
+
+        # Almacenar los tokens tal cual en self.dictio (si así lo deseas)
+        self.dictio = tokens # Antes tenías [tokens], lo que creaba una lista de una sola lista de tokens.
+                            # Si quieres todos los tokens directamente, quita los corchetes.
+                            # Si tu interfaz necesita una lista de listas por alguna razón, mantén [tokens].
+                            # Lo más común es almacenar directamente la lista de tokens.
+
+        self.actualizar_tabla(tokens) # Asumiendo que esta función también se adaptará para
+                                    # procesar el nuevo formato de token.
+
+    # Imprimir los tokens en el log, adaptando las claves del diccionario
         for token in tokens:
-            self.error_log.add_message(f"Token: {token['Lexema']}, ID: {token['ID']}, Línea: {token['Línea']}, Columna: {token['Columna']}, Patrón: {token['Patrón']}, Reservada: {'Sí' if token['Reservada'] else 'No'}", level="INFO")
+            # Asegúrate de usar las nuevas claves: TOKEN_TYPE, LEXEME, LINE, COLUMN, DESCRIPTION, IS_RESERVED
+            self.error_log.add_message(
+                f"Token: {token['LEXEME']}, "
+                f"Tipo: {token['TOKEN_TYPE']}, " # Antes 'ID'
+                f"Línea: {token['LINE']}, "     # Antes 'Línea'
+                f"Columna: {token['COLUMN']}, "  # Antes 'Columna'
+                f"Descripción: {token['DESCRIPTION']}, " # Antes 'Patrón'
+                f"Reservada: {'Sí' if token['IS_RESERVED'] else 'No'}", # Antes 'Reservada'
+                level="INFO"
+            )
         self.error_log.add_message("Análisis léxico completado.", level="INFO")
         self.error_log.add_message(f"Tokens encontrados: {len(tokens)}", level="INFO")
         
 
     def actualizar_tabla(self, resultados):
+    # Establecer el número de filas en la tabla
         self.tabla.setRowCount(len(resultados))
+
+        # Iterar sobre los resultados (tokens) y llenar la tabla
         for row, resultado in enumerate(resultados):
-            self.tabla.setItem(row, 0, QTableWidgetItem(str(resultado["ID"])))
-            self.tabla.setItem(row, 1, QTableWidgetItem(resultado["Lexema"]))
-            self.tabla.setItem(row, 2, QTableWidgetItem(str(resultado["Línea"])))
-            self.tabla.setItem(row, 3, QTableWidgetItem(str(resultado["Columna"])))
-            self.tabla.setItem(row, 4, QTableWidgetItem(resultado["Patrón"]))
-            self.tabla.setItem(row, 5, QTableWidgetItem("Sí" if resultado["Reservada"] else "No"))
+            # Asegúrate de que los índices de columna coincidan con tu diseño de tabla en PyQt
+            # (0, 1, 2, 3, 4, 5)
+
+            # Columna 0: TOKEN_TYPE (antes "ID")
+            self.tabla.setItem(row, 0, QTableWidgetItem(str(resultado["TOKEN_TYPE"])))
+            
+            # Columna 1: LEXEME (antes "Lexema")
+            self.tabla.setItem(row, 1, QTableWidgetItem(resultado["LEXEME"]))
+            
+            # Columna 2: LINE (antes "Línea")
+            self.tabla.setItem(row, 2, QTableWidgetItem(str(resultado["LINE"])))
+            
+            # Columna 3: COLUMN (antes "Columna")
+            self.tabla.setItem(row, 3, QTableWidgetItem(str(resultado["COLUMN"])))
+            
+            # Columna 4: DESCRIPTION (antes "Patrón")
+            self.tabla.setItem(row, 4, QTableWidgetItem(resultado["DESCRIPTION"]))
+            
+            # Columna 5: IS_RESERVED (antes "Reservada")
+            self.tabla.setItem(row, 5, QTableWidgetItem("Sí" if resultado["IS_RESERVED"] else "No"))
 
                 
     def procesar_codigo2(self):

@@ -1,19 +1,37 @@
 import re
 
 def cargar_diccionario(filepath):
+    """
+    Carga el diccionario de tokens desde un archivo de texto con el nuevo formato.
+    El archivo debe tener un encabezado "TOKEN_TYPE LEXEME IS_RESERVED DESCRIPTION".
+    Las líneas que comienzan con '#' o están vacías son ignoradas.
+    """
     try:
         diccionario = []
-        with open(filepath, 'r') as file:
+        with open(filepath, 'r', encoding='utf-8') as file:
             lines = file.readlines()
-            for line in lines[1:]:  # Saltar la primera línea (encabezado)
-                partes = line.strip().split()
-                if len(partes) == 4:
+            header_found = False
+            for line in lines:
+                if line.strip().startswith("TOKEN_TYPE LEXEME IS_RESERVED DESCRIPTION"):
+                    header_found = True
+                    continue
+                if not header_found: # Saltar líneas antes del encabezado
+                    continue
+
+                line = line.strip()
+                if not line or line.startswith('#'): # Saltar líneas vacías o comentarios
+                    continue
+                
+                parts = line.split(None, 3)  # divide en máximo 4 partes, permitiendo espacios en DESCRIPTION
+                if len(parts) == 4:
                     diccionario.append({
-                        "id": partes[0],
-                        "lexema": partes[1],
-                        "palabraReservada": partes[2] == "true",
-                        "nombre": partes[3]
+                        "TOKEN_TYPE": parts[0],
+                        "LEXEME": parts[1],
+                        "IS_RESERVED": parts[2].lower() == "true",
+                        "DESCRIPTION": parts[3]
                     })
+                else:
+                    print(f"Advertencia: Línea con formato incorrecto en el diccionario ignorada: '{line}'")
         return diccionario
     except FileNotFoundError:
         print(f"Error: No se encuentra el archivo '{filepath}'")
@@ -23,169 +41,189 @@ def cargar_diccionario(filepath):
         return []
 
 def calcular_linea(codigo, posicion):
+    """Calcula el número de línea dado el código y una posición."""
     return codigo.count('\n', 0, posicion) + 1
 
 def calcular_columna(codigo, posicion):
-    # Encuentra la última nueva línea antes de la posición
+    """Calcula el número de columna dado el código y una posición."""
     ultima_nueva_linea = codigo.rfind('\n', 0, posicion)
     if ultima_nueva_linea == -1:
-        # Si no hay nuevas líneas, la columna es posicion + 1 (contando desde 1)
         return posicion + 1
     else:
-        # La columna es la diferencia entre posicion y la última nueva línea
         return posicion - ultima_nueva_linea
 
 def analizar_codigo(codigo):
-    diccionario = cargar_diccionario('tabla_signos_java.txt')
+    diccionario_original = cargar_diccionario('tabla_signos_java.txt')
+    if not diccionario_original:
+        return []
+
     resultados = []
-    
-    # Definir palabras reservadas de Java
-    palabras_reservadas = {
-        "abstract", "assert", "boolean", "break", "byte", "case", "catch", "char",
-        "class", "const", "continue", "default", "do", "double", "else", "enum",
-        "extends", "final", "finally", "float", "for", "goto", "if", "implements",
-        "import", "instanceof", "int", "interface", "long", "native", "new", "package",
-        "private", "protected", "public", "return", "short", "static", "strictfp", 
-        "super", "switch", "synchronized", "this", "throw", "throws", "transient", 
-        "try", "void", "volatile", "while", "true", "false", "null"
-    }
 
-    # Definir patrones en orden de prioridad (los más específicos primero)
-    patrones = [
-        ("comentario_linea", r'//[^\n]*'),
-        ("comentario_bloque", r'/\*[\s\S]*?\*/'),
-        ("whitespace", r'\s+'),
-        ("literal_caracter", r"'([^'\\\n]|\\[tnrfb\"'\\]|\\u[0-9a-fA-F]{4})'"),
-        ("cadenaLiteral", r'"([^"\\\n]|\\[tnrfb\"\'\\]|\\u[0-9a-fA-F]{4})*"'),
-        ("literal_booleano", r'true|false'),
-        ("literal_nulo", r'null'),
-        ("operador_lambda", r'->'),
-        ("operador_referencia", r'::'),
-        ("operador_incremento", r'\+\+|--'),
-        ("operador_asignacion", r'=|\+=|-=|\*=|/=|%='),
-        ("operador_relacional", r'==|!=|>|<|>=|<='),
-        ("operador_logico", r'&&|\|\||!'),
-        ("operador_bit", r'&|\^|\||~|>>|<<|>>>'),
-        ("operador_ternario", r'\?|:'),
-        ("operador_aritmetico", r'\+|-|\*|/|%'),
-        ("numero_decimal", r'\d+\.\d+([eE][+-]?\d+)?[fFdD]?'),
-        ("numero_entero", r'\d+[lL]?'),
-        ("delimitador", r'\.|,|;|\[|\]|\(|\)|\{|\}'),
-        ("tipo_primitivo", r'byte|short|int|long|float|double|char|boolean'),
-        ("control_flujo", r'if|else|switch|case|default|for|while|do|break|continue'),
-        ("modificador_acceso", r'class|interface|enum|extends|implements|public|private|protected|static|final|abstract'),
-        ("identificador", r'[a-zA-Z_][a-zA-Z0-9_]*'),
-        # Patrones para símbolos no válidos
-        ("operador_no_valido", r'\*\*|:=|=>|<=>|<>'),
-        ("caracter_especial_no_valido", r'¿|¡|¬|‰|§'),
-        ("delimitador_no_valido", r'«|»|„|›|‹'),
-        ("operador_matematico_no_valido", r'÷|×|∑|∏'),
-        ("caracter_no_reconocido", r'ñ|Ñ|æ|ø|ß|ð'),
+    # Mapeo rápido de lexema -> entrada del diccionario (solo para palabras reservadas y símbolos)
+    lexeme_to_token_info = {}
+    for entry in diccionario_original:
+        if entry["LEXEME"] not in ["__ID__", "__STRING__", "__CHAR__", "__INTEGER__", "__FLOAT__", "__BINARY__", "__HEX__"]:
+            lexeme_to_token_info[entry["LEXEME"]] = entry
+
+    # --- Construcción de patrones regex ---
+    all_regex_patterns = []
+
+    # 1. Comentarios
+    all_regex_patterns.append(("COMMENT_DOC_START", r'/\*\*.*?\*/'))
+    all_regex_patterns.append(("COMMENT_BLOCK_START", r'/\*.*?\*/'))
+    all_regex_patterns.append(("COMMENT_LINE_PREFIX", r'//[^\n]*'))
+
+    # 2. Literales de Cadena y Carácter
+    all_regex_patterns.append(("LIT_STRING", r'"(?:[^"\\\n]|\\.)*"'))
+    all_regex_patterns.append(("LIT_CHAR", r"'(?:[^'\\\n]|\\.)'"))
+
+    # 3. Literales Numéricos
+    all_regex_patterns.append(("LIT_HEX", r'0x[0-9a-fA-F_]+'))
+    all_regex_patterns.append(("LIT_BINARY", r'0b[01_]+'))
+    # Flotantes mejorados
+    all_regex_patterns.append(("LIT_FLOAT", 
+        r'(?:(?:[0-9][0-9_]*\.[0-9_]+|\.[0-9_]+)(?:[eE][+-]?[0-9_]+)?[fFdD]?|'
+        r'[0-9][0-9_]*(?:[eE][+-]?[0-9_]+)[fFdD]?|'
+        r'[0-9][0-9_]*[fFdD])'))
+    # Enteros (se ponen después)
+    all_regex_patterns.append(("LIT_INTEGER", r'[0-9][0-9_]*[lL]?'))
+
+    # 4. Lexemas fijos (solo símbolos y operadores, no keywords)
+    fixed_lexeme_entries = [
+        entry for entry in diccionario_original
+        if entry["LEXEME"] not in ["__ID__", "__STRING__", "__CHAR__", "__INTEGER__", "__FLOAT__", "__BINARY__", "__HEX__"]
+        and not entry["IS_RESERVED"]  # no incluir palabras reservadas
     ]
+    fixed_lexeme_entries.sort(key=lambda x: len(x["LEXEME"]), reverse=True)
 
-    # Construir el regex combinado
-    patron_combinado = '|'.join(f'(?P<{name}>{pattern})' for name, pattern in patrones)
+    for entry in fixed_lexeme_entries:
+        group_name = f"FIXED_LEXEME_{entry['TOKEN_TYPE']}"
+        all_regex_patterns.append((group_name, re.escape(entry["LEXEME"])))
 
-    # Escanear el código original
+    # 5. Identificadores
+    all_regex_patterns.append(("IDENTIFIER", r'[a-zA-Z_$][a-zA-Z0-9_$]*'))
+
+    # 6. Espacios en blanco
+    all_regex_patterns.append(("WHITESPACE", r'\s+'))
+
+    # 7. Catch-all
+    all_regex_patterns.append(("ERROR_UNRECOGNIZED_CHAR", r'.'))
+
+    # Compilar regex
+    patron_combinado = re.compile('|'.join(f'(?P<{name}>{pattern})' for name, pattern in all_regex_patterns), re.DOTALL)
+
     posicion_actual = 0
-    for match in re.finditer(patron_combinado, codigo):
-        tipo_token = match.lastgroup
-        lexema = match.group(tipo_token)
+    for match in patron_combinado.finditer(codigo):
+        tipo_token_grupo = match.lastgroup
+        lexema = match.group(tipo_token_grupo)
         start = match.start()
 
-        # Verificar si hay caracteres no reconocidos entre el último match y este
-        if start > posicion_actual:
-            fragmento_no_reconocido = codigo[posicion_actual:start]
-            if fragmento_no_reconocido.strip():  # Si hay algo que no sean espacios
-                linea = calcular_linea(codigo, posicion_actual)
-                columna = calcular_columna(codigo, posicion_actual)
-                resultados.append({
-                    "ID": "ERROR",
-                    "Lexema": fragmento_no_reconocido,
-                    "Línea": linea,
-                    "Columna": columna,
-                    "Patrón": "Carácter no reconocido",
-                    "Reservada": False
-                })
-        
-        posicion_actual = match.end()
-
-        # Saltar comentarios y espacios
-        if tipo_token in ["whitespace", "comentario_linea", "comentario_bloque"]:
-            continue
-
-        # Manejar símbolos no válidos
-        if tipo_token in ["operador_no_valido", "caracter_especial_no_valido", 
-                          "delimitador_no_valido", "operador_matematico_no_valido", 
-                          "caracter_no_reconocido"]:
-            linea = calcular_linea(codigo, start)
-            columna = calcular_columna(codigo, start)
-            tipo_error = {
-                "operador_no_valido": "Operador no válido en Java",
-                "caracter_especial_no_valido": "Carácter especial no válido en Java",
-                "delimitador_no_valido": "Delimitador no válido en Java",
-                "operador_matematico_no_valido": "Operador matemático no válido en Java",
-                "caracter_no_reconocido": "Carácter no reconocido en identificadores de Java",
-            }[tipo_token]
-            
-            resultados.append({
-                "ID": "ERROR",
-                "Lexema": lexema,
-                "Línea": linea,
-                "Columna": columna,
-                "Patrón": tipo_error,
-                "Reservada": False,
-            })
-            continue  # Saltar al siguiente token
-
-        # Buscar en el diccionario
-        entrada_diccionario = next((entrada for entrada in diccionario if entrada["lexema"] == lexema), None)
         linea = calcular_linea(codigo, start)
         columna = calcular_columna(codigo, start)
-        
-        if entrada_diccionario:
+
+        # Texto no reconocido entre tokens
+        if start > posicion_actual:
+            fragmento_no_reconocido = codigo[posicion_actual:start]
+            if fragmento_no_reconocido.strip():
+                error_line = calcular_linea(codigo, posicion_actual)
+                error_col = calcular_columna(codigo, posicion_actual)
+                resultados.append({
+                    "TOKEN_TYPE": "ERROR_FRAGMENT",
+                    "LEXEME": fragmento_no_reconocido,
+                    "LINE": error_line,
+                    "COLUMN": error_col,
+                    "DESCRIPTION": "Fragmento no reconocido entre tokens",
+                    "IS_RESERVED": False
+                })
+
+        posicion_actual = match.end()
+
+        # Ignorar espacios y comentarios
+        if tipo_token_grupo in ["WHITESPACE", "COMMENT_LINE_PREFIX", "COMMENT_BLOCK_START", "COMMENT_DOC_START"]:
+            continue
+
+        # Error de carácter
+        if tipo_token_grupo == "ERROR_UNRECOGNIZED_CHAR":
             resultados.append({
-                "ID": entrada_diccionario["id"],
-                "Lexema": lexema,
-                "Línea": linea,
-                "Columna": columna,
-                "Patrón": entrada_diccionario["nombre"],
-                "Reservada": entrada_diccionario["palabraReservada"]
+                "TOKEN_TYPE": "ERROR",
+                "LEXEME": lexema,
+                "LINE": linea,
+                "COLUMN": columna,
+                "DESCRIPTION": "Carácter no reconocido",
+                "IS_RESERVED": False
+            })
+            continue
+
+        token_entry = None
+
+        # Lexemas fijos
+        if tipo_token_grupo.startswith("FIXED_LEXEME_"):
+            token_type_from_group = tipo_token_grupo.replace("FIXED_LEXEME_", "")
+            token_entry = next((e for e in diccionario_original if e["TOKEN_TYPE"] == token_type_from_group and e["LEXEME"] == lexema), None)
+            if not token_entry:
+                token_entry = lexeme_to_token_info.get(lexema)
+
+        # Identificadores y keywords
+        elif tipo_token_grupo == "IDENTIFIER":
+            if lexema in lexeme_to_token_info and lexeme_to_token_info[lexema]["IS_RESERVED"]:
+                token_entry = lexeme_to_token_info[lexema]
+            else:
+                token_entry = {
+                    "TOKEN_TYPE": "ID_IDENTIFIER",
+                    "LEXEME": lexema,
+                    "IS_RESERVED": False,
+                    "DESCRIPTION": "identificador"
+                }
+
+        # Literales
+        elif tipo_token_grupo.startswith("LIT_"):
+            descripcion = {
+                "LIT_STRING": "literal de cadena",
+                "LIT_CHAR": "literal de carácter",
+                "LIT_HEX": "literal hexadecimal",
+                "LIT_BINARY": "literal binario",
+                "LIT_FLOAT": "literal flotante",
+                "LIT_INTEGER": "literal entero"
+            }.get(tipo_token_grupo, "literal")
+            token_entry = {
+                "TOKEN_TYPE": tipo_token_grupo,
+                "LEXEME": lexema,
+                "IS_RESERVED": False,
+                "DESCRIPTION": descripcion
+            }
+
+        if token_entry:
+            resultados.append({
+                "TOKEN_TYPE": token_entry["TOKEN_TYPE"],
+                "LEXEME": token_entry["LEXEME"],
+                "LINE": linea,
+                "COLUMN": columna,
+                "DESCRIPTION": token_entry["DESCRIPTION"],
+                "IS_RESERVED": token_entry["IS_RESERVED"]
             })
         else:
-            # Determinar el patrón para tokens no reservados
-            patron = tipo_token
-            if tipo_token == "cadenaLiteral":
-                patron = "literal_cadena"
-            elif tipo_token == "literal_caracter":
-                patron = "literal_caracter"
-                
-            # Verificar si es una palabra reservada
-            es_reservada = lexema in palabras_reservadas
-            
             resultados.append({
-                "ID": tipo_token if not es_reservada else "reserved_" + lexema,
-                "Lexema": lexema,
-                "Línea": linea,
-                "Columna": columna,
-                "Patrón": patron,
-                "Reservada": es_reservada
+                "TOKEN_TYPE": "ERROR_UNCLASSIFIED",
+                "LEXEME": lexema,
+                "LINE": linea,
+                "COLUMN": columna,
+                "DESCRIPTION": f"Token no clasificado o mapeado: {tipo_token_grupo}",
+                "IS_RESERVED": False
             })
 
-    # Verificar si hay caracteres no reconocidos al final del código
+    # Fragmento final no reconocido
     if posicion_actual < len(codigo):
         fragmento_final = codigo[posicion_actual:]
-        if fragmento_final.strip():  # Si hay algo que no sean espacios
+        if fragmento_final.strip():
             linea = calcular_linea(codigo, posicion_actual)
             columna = calcular_columna(codigo, posicion_actual)
             resultados.append({
-                "ID": "ERROR",
-                "Lexema": fragmento_final,
-                "Línea": linea,
-                "Columna": columna,
-                "Patrón": "Carácter no reconocido",
-                "Reservada": False
+                "TOKEN_TYPE": "ERROR_FRAGMENT",
+                "LEXEME": fragmento_final,
+                "LINE": linea,
+                "COLUMN": columna,
+                "DESCRIPTION": "Fragmento final no reconocido",
+                "IS_RESERVED": False
             })
 
     return resultados
-

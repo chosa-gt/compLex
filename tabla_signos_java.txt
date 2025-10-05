@@ -1,138 +1,188 @@
-id lexema palabrarReservada Nombre
-operadorAritmetico ++ false aumento
-operadorAritmetico -- false decremento
-operadorAritmetico + false suma
+# Tokens para el analizador léxico de Java
+#
+# Cada línea define un tipo de token para el lenguaje Java.
+# Las columnas son:
+#   TOKEN_TYPE: Tipo de token constante (ej. OP_PLUS, KW_IF, LIT_INTEGER)
+#   LEXEME: El texto exacto del token si es fijo (ej. "+", "if"), o un placeholder
+#           para tipos de tokens variables (ej. "__ID__" para identificadores,
+#           "__STRING__" para literales de cadena).
+#   IS_RESERVED: "true" si es una palabra clave o literal reservado, "false" en otro caso.
+#   DESCRIPTION: Descripción legible del token.
 
-operadorAritmetico - false resta
-operadorAritmetico * false multiplicacion
-operadorAritmetico / false division
-operadorAritmetico % false modulo
-operadorLambda -> false lambda
-operadorAsignacion = false asignacion
-operadorAsignacion += false suma_asignacion
-operadorAsignacion -= false resta_asignacion
-operadorAsignacion *= false multiplicacion_asignacion
-operadorAsignacion /= false division_asignacion
-operadorAsignacion %= false modulo_asignacion
-operadorRelacional == false igualdad
-operadorRelacional != false diferente
-operadorRelacional > false mayor_que
-operadorRelacional < false menor_que
-operadorRelacional >= false mayor_o_igual
-operadorRelacional <= false menor_o_igual
-operadorBit &= false and_bit_asignacion
-operadorBit |= false or_bit_asignacion
-operadorBit ^= false xor_bit_asignacion
-operadorBit <<= false desplazamiento_izquierda_asignacion
-operadorBit >>= false desplazamiento_derecha_asignacion
-operadorBit >>>= false desplazamiento_sin_signo_asignacion
-operadorLogico && false and_logico
-operadorLogico ! false not_logico
-operadorLogico || false or_logico
-operadorIncremento ++ false incremento
-operadorIncremento -- false decremento
-operadorBit & false and_bit
-operadorBit ^ false xor_bit
-operadorBit | false or_bit
-operadorBit ~ false not_bit
-operadorBit << false desplazamiento_izquierda
-operadorBit >> false desplazamiento_derecha
-operadorBit >>> false desplazamiento_sin_signo
-operadorTernario ? false condicion_ternaria
-operadorTernario : false retorno_ternaria
-operadorReferencia :: false referencia_metodo
-separador . false punto
-separador [ false corchete_abierto
-separador ] false corchete_cerrado
-separador ( false parentesis_abierto
-separador ) false parentesis_cerrado
-separador { false llave_abierta
-separador } false llave_cerrada
-separador , false coma
-separador ; false punto_coma
-operadorVarargs ... false varargs
-operadorAnotacion @ false anotacion
-literalCadena " false cadena
-literalCaracter ' false caracter
-literalBooleano true true booleano
-literalBooleano false true booleano
-literalNull null true nulo
-literalBinario 0b false binario
-literalHexa 0x false hexadecimal
-literalSeparador 0_ false separador_numerico
-guionBajo _ false guion_bajo
+TOKEN_TYPE LEXEME IS_RESERVED DESCRIPTION
+# Identificadores
+ID_IDENTIFIER __ID__ false identificador
 
-salidaError err false error
-comentarioLinea // false comentario_linea
-comentarioBloque /* false comentario_bloque_abierto
-comentarioBloque */ false comentario_bloque_cerrado
-comentarioDoc /** false comentario_documentacion
-tipoPrimitivo byte true byte
-tipoPrimitivo short true short
-tipoPrimitivo int true int
-tipoPrimitivo long true long
-tipoPrimitivo float true float
-tipoPrimitivo double true double
-tipoPrimitivo char true char
-tipoPrimitivo boolean true boolean
-tipoReferencia String true String
-controlFlujo if true if
-controlFlujo else true else
-controlFlujo switch true switch
-controlFlujo case true case
-controlFlujo default true default
-controlFlujo for true for
-controlFlujo while true while
-controlFlujo do true do
-controlFlujo break true break
-controlFlujo continue true continue
-palabraReservada class true class
-palabraReservada interface true interface
-palabraReservada enum true enum
-palabraReservada extends true extends
-palabraReservada implements true implements
-modificadorAcceso public true public
-modificadorAcceso private true private
-modificadorAcceso protected true protected
-modificadorAcceso static true static
-modificadorAcceso final true final
-modificadorAcceso abstract true abstract
-modificadorVariable transient true transient
-modificadorVariable volatile true volatile
-modificadorVariable synchronized true synchronized
-modificadorMetodo native true native
-modificadorMetodo strictfp true strictfp
-manejoExcepcion try true try
-manejoExcepcion catch true catch
-manejoExcepcion finally true finally
-manejoExcepcion throw true throw
-manejoExcepcion throws true throws
-palabraReservada new true new
-palabraReservada this true this
-palabraReservada super true super
-operadorLogico instanceof true instanceof
-palabraReservada return true return
-tipoRetorno void true void
-palabraReservada var true var
-palabraReservada yield true yield
-palabraReservada record true record
-palabraReservada sealed true sealed
-palabraReservada non-sealed true non-sealed
-palabraReservada permits true permits
-moduloModule module true module
-moduloRequires requires true requires
-moduloExports exports true exports
-moduloOpens opens true opens
-moduloUses uses true uses
-moduloProvides provides true provides
-anotacion @Override true Override
-anotacion @Deprecated true Deprecated
-anotacion @SuppressWarnings true SuppressWarnings
-metodoEspecial main true main
+# Operadores Aritméticos
+OP_INCREMENT ++ false aumento
+OP_DECREMENT -- false decremento
+OP_PLUS + false suma
+OP_MINUS - false resta
+OP_MULTIPLY * false multiplicacion
+OP_DIVIDE / false division
+OP_MODULO % false modulo
 
+# Operadores Lógicos
+OP_LOGICAL_AND && false and_logico
+OP_LOGICAL_OR || false or_logico
+OP_LOGICAL_NOT ! false not_logico
 
-metodoFormato format true format
-parametro args true args
-clasePredefinida Object true Object
-clasePredefinida Math true Math
-clasePredefinida Array true Array 
+# Operadores de Asignación
+OP_ASSIGN = false asignacion
+OP_PLUS_ASSIGN += false suma_asignacion
+OP_MINUS_ASSIGN -= false resta_asignacion
+OP_MULTIPLY_ASSIGN *= false multiplicacion_asignacion
+OP_DIVIDE_ASSIGN /= false division_asignacion
+OP_MODULO_ASSIGN %= false modulo_asignacion
+
+# Operadores Relacionales
+OP_EQUALS == false igualdad
+OP_NOT_EQUALS != false diferente
+OP_GREATER > false mayor_que
+OP_LESS < false menor_que
+OP_GREATER_EQUALS >= false mayor_o_igual
+OP_LESS_EQUALS <= false menor_o_igual
+
+# Operadores Bit a Bit
+OP_BIT_AND & false and_bit
+OP_BIT_OR | false or_bit
+OP_BIT_XOR ^ false xor_bit
+OP_BIT_NOT ~ false not_bit
+OP_LSHIFT << false desplazamiento_izquierda
+OP_RSHIFT >> false desplazamiento_derecha
+OP_URSHIFT >>> false desplazamiento_sin_signo
+OP_BIT_AND_ASSIGN &= false and_bit_asignacion
+OP_BIT_OR_ASSIGN |= false or_bit_asignacion
+OP_BIT_XOR_ASSIGN ^= false xor_bit_asignacion
+OP_LSHIFT_ASSIGN <<= false desplazamiento_izquierda_asignacion
+OP_RSHIFT_ASSIGN >>= false desplazamiento_derecha_asignacion
+OP_URSHIFT_ASSIGN >>>= false desplazamiento_sin_signo_asignacion
+
+# Otros Operadores y Símbolos
+OP_LAMBDA_ARROW -> false lambda
+OP_METHOD_REF :: false referencia_metodo
+OP_TERNARY_QUESTION ? false condicion_ternaria
+OP_TERNARY_COLON : false retorno_ternaria
+OP_VARARGS ... false varargs
+OP_ANNOTATION_AT @ false anotacion
+OP_INSTANCEOF instanceof true instanceof
+
+# Delimitadores
+DELIMITER_DOT . false punto
+DELIMITER_LBRACKET [ false corchete_abierto
+DELIMITER_RBRACKET ] false corchete_cerrado
+DELIMITER_LPAREN ( false parentesis_abierto
+DELIMITER_RPAREN ) false parentesis_cerrado
+DELIMITER_LBRACE { false llave_abierta
+DELIMITER_RBRACE } false llave_cerrada
+DELIMITER_COMMA , false coma
+DELIMITER_SEMICOLON ; false punto_coma
+
+# Literales
+LIT_STRING __STRING__ false cadena
+LIT_CHAR __CHAR__ false caracter
+LIT_TRUE true true booleano_true
+LIT_FALSE false true booleano_false
+LIT_NULL null true nulo
+LIT_INTEGER __INTEGER__ false entero
+LIT_FLOAT __FLOAT__ false flotante
+LIT_BINARY __BINARY__ false binario
+LIT_HEX __HEX__ false hexadecimal
+
+# Comentarios (Manejo interno del lexer, no tokens para el parser)
+# Se incluyen para tener una descripción en el diccionario,
+# pero el lexer los saltará.
+COMMENT_LINE_PREFIX // false comentario_linea
+COMMENT_BLOCK_START /* false comentario_bloque_abierto
+COMMENT_BLOCK_END */ false comentario_bloque_cerrado
+COMMENT_DOC_START /** false comentario_documentacion
+
+# Palabras Clave (Keywords) - Tipos Primitivos y Referencia
+KW_BYTE byte true byte
+KW_SHORT short true short
+KW_INT int true int
+KW_LONG long true long
+KW_FLOAT float true float
+KW_DOUBLE double true double
+KW_CHAR char true char
+KW_BOOLEAN boolean true boolean
+KW_STRING String true String # String es una clase, pero funcionalmente un tipo en contextos
+KW_VOID void true void # Tipo de retorno para funciones que no devuelven nada
+KW_VAR var true var # Tipo de variable inferida (Java 10+)
+
+# Palabras Clave - Control de Flujo
+KW_IF if true if
+KW_ELSE else true else
+KW_SWITCH switch true switch
+KW_CASE case true case
+KW_DEFAULT default true default
+KW_FOR for true for
+KW_WHILE while true while
+KW_DO do true do
+KW_BREAK break true break
+KW_CONTINUE continue true continue
+KW_YIELD yield true yield # Contextual keyword en switch expressions (Java 14+)
+KW_RETURN return true return
+
+# Palabras Clave - Estructura de Clases/Interfaces/Enums/Módulos
+KW_CLASS class true class
+KW_INTERFACE interface true interface
+KW_ENUM enum true enum
+KW_EXTENDS extends true extends
+KW_IMPLEMENTS implements true implements
+KW_MODULE module true module
+KW_REQUIRES requires true requires
+KW_EXPORTS exports true exports
+KW_OPENS opens true opens
+KW_USES uses true uses
+KW_PROVIDES provides true provides
+KW_RECORD record true record # Java 16+
+KW_SEALED sealed true sealed # Java 17+
+KW_NON_SEALED non-sealed true non-sealed # Java 17+
+KW_PERMITS permits true permits # Java 17+
+
+# Palabras Clave - Modificadores
+KW_PUBLIC public true public
+KW_PRIVATE private true private
+KW_PROTECTED protected true protected
+KW_STATIC static true static
+KW_FINAL final true final
+KW_ABSTRACT abstract true abstract
+KW_TRANSIENT transient true transient
+KW_VOLATILE volatile true volatile
+KW_SYNCHRONIZED synchronized true synchronized
+KW_NATIVE native true native
+KW_STRICTFP strictfp true strictfp
+
+# Palabras Clave - Manejo de Excepciones
+KW_TRY try true try
+KW_CATCH catch true catch
+KW_FINALLY finally true finally
+KW_THROW throw true throw
+KW_THROWS throws true throws
+
+# Otras Palabras Clave
+KW_NEW new true new
+KW_THIS this true this
+KW_SUPER super true super
+KW_CONST const true const # Reservada pero no usada en Java
+KW_GOTO goto true goto # Reservada pero no usada en Java
+
+# Anotaciones (comunes, se pueden añadir más)
+ANNOTATION_OVERRIDE @Override true anotacion_override
+ANNOTATION_DEPRECATED @Deprecated true anotacion_deprecated
+ANNOTATION_SUPPRESS_WARNINGS @SuppressWarnings true anotacion_suppresswarnings
+
+# Elementos específicos para el ejercicio (a menudo manejados a nivel semántico)
+MET_MAIN main false metodo_main
+MET_FORMAT format false metodo_format
+PARAM_ARGS args false parametro_args
+CLS_OBJECT Object false clase_object
+CLS_MATH Math false clase_math
+CLS_ARRAY Array false clase_array
+
+# Token para errores reportados por el lexer
+ERROR_TOKEN err false error
+
+# Guion bajo como identificador independiente (Java 9+), si no, es parte de ID_IDENTIFIER
+ID_UNDERSCORE _ false guion_bajo
